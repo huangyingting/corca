@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cortex
+      POSTGRES_PASSWORD: cortex_prod_password
+      POSTGRES_DB: cortex_prod
+    ports:
+      - '5432:5432'
+    volumes:
+      - cortex_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cortex -d cortex_prod']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  cortex-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://cortex:cortex_prod_password@postgres:5432/cortex_prod?schema=public
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: replace-with-production-32-byte-secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  cortex_pgdata:

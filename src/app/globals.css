@@ -1,0 +1,253 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-page: #fcfcf9;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f4f4ee;
+  --bg-subtle: #eaeae2;
+  --fg-primary: #1c1c1a;
+  --fg-secondary: #575751;
+  --fg-muted: #8a8a80;
+  --border-default: #e2e2d8;
+  --border-strong: #c8c8bc;
+  --accent-primary: #1c1c1a;
+  --accent-brand: #0d9488;
+}
+
+[data-theme='dark'] {
+  --bg-page: #121211;
+  --bg-surface: #1a1a18;
+  --bg-elevated: #232320;
+  --bg-subtle: #2c2c28;
+  --fg-primary: #f2f2ec;
+  --fg-secondary: #b5b5aa;
+  --fg-muted: #78786e;
+  --border-default: #2e2e2a;
+  --border-strong: #45453f;
+  --accent-primary: #f2f2ec;
+  --accent-brand: #14b8a6;
+}
+
+html,
+body {
+  background-color: var(--bg-page);
+  color: var(--fg-primary);
+  font-family: 'Public Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  padding: 0;
+}
+
+.font-serif-academic {
+  font-family: 'Newsreader', 'Georgia', 'Times New Roman', serif;
+}
+
+.font-mono-code {
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+}
+
+/* Academic Paper Preview Styles */
+.cortex-paper-sheet {
+  background: #ffffff;
+  color: #181816;
+  border: 1px solid #deded4;
+  box-shadow: 0 8px 28px rgba(24, 24, 22, 0.06);
+  padding: 2.5rem 2.75rem;
+  border-radius: 4px;
+  font-family: 'Newsreader', 'Georgia', serif;
+  line-height: 1.68;
+}
+
+.cortex-paper-header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+  border-bottom: 1px solid #ecece4;
+  padding-bottom: 1.25rem;
+}
+
+.cortex-paper-title {
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1.28;
+  color: #111110;
+  margin: 0 0 0.5rem 0;
+}
+
+.cortex-paper-authors {
+  font-size: 0.95rem;
+  color: #3f3f3a;
+  font-weight: 500;
+}
+
+.cortex-paper-date {
+  font-size: 0.82rem;
+  color: #707067;
+  margin-top: 0.25rem;
+}
+
+.cortex-paper-abstract {
+  background: #fafaf6;
+  border-left: 3px solid #1c1c1a;
+  padding: 0.85rem 1.15rem;
+  margin: 1.25rem 0 1.5rem 0;
+  font-size: 0.92rem;
+}
+
+.cortex-paper-abstract-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.74rem;
+  color: #4a4a44;
+  margin-bottom: 0.3rem;
+}
+
+.cortex-h1 {
+  font-size: 1.28rem;
+  font-weight: 700;
+  margin: 1.4rem 0 0.55rem 0;
+  color: #141412;
+  cursor: pointer;
+}
+
+.cortex-h2 {
+  font-size: 1.08rem;
+  font-weight: 600;
+  margin: 1.1rem 0 0.45rem 0;
+  color: #22221f;
+  cursor: pointer;
+}
+
+.cortex-h3 {
+  font-size: 0.96rem;
+  font-weight: 600;
+  font-style: italic;
+  margin: 0.9rem 0 0.35rem 0;
+  color: #2d2d29;
+}
+
+.cortex-p {
+  margin: 0.55rem 0;
+  font-size: 0.96rem;
+  text-align: justify;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.15s ease;
+}
+
+.cortex-p:hover,
+.cortex-h1:hover,
+.cortex-h2:hover {
+  background-color: rgba(13, 148, 136, 0.07);
+}
+
+.cortex-math-block {
+  background: #f7f7f2;
+  border: 1px solid #e5e5dc;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin: 0.85rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.86rem;
+  text-align: center;
+  color: #1c1c1a;
+  overflow-x: auto;
+}
+
+.cortex-math-inline {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.86em;
+  background: #f3f3ec;
+  padding: 0.08rem 0.32rem;
+  border-radius: 3px;
+}
+
+.cortex-cite {
+  color: #0d9488;
+  font-weight: 600;
+  font-family: 'Public Sans', sans-serif;
+  font-size: 0.85em;
+}
+
+.cortex-figure {
+  border: 1px dashed #c8c8bc;
+  background: #fafaf6;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+  border-radius: 4px;
+}
+
+.cortex-figure-box {
+  font-family: 'Public Sans', sans-serif;
+  font-size: 0.8rem;
+  color: #6b6b62;
+  padding: 1.1rem;
+  background: #f0f0e8;
+  border-radius: 3px;
+  margin-bottom: 0.5rem;
+}
+
+.cortex-caption {
+  font-size: 0.85rem;
+  color: #474740;
+  font-style: italic;
+}
+
+.cortex-list {
+  margin: 0.5rem 0 0.75rem 1.35rem;
+  padding: 0;
+}
+
+.cortex-li {
+  margin: 0.25rem 0;
+  font-size: 0.94rem;
+}
+
+.cortex-slide-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.cortex-slide-card {
+  background: #ffffff;
+  border: 1px solid #dcdcd0;
+  border-radius: 8px;
+  padding: 1.75rem 2rem;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.cortex-slide-number {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7c7c72;
+  font-family: 'Public Sans', sans-serif;
+}
+
+.cortex-bib-entry {
+  border: 1px solid #e2e2d8;
+  background: #fafaf6;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.cortex-bib-badge {
+  display: inline-block;
+  background: #1c1c1a;
+  color: #ffffff;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  margin-right: 0.5rem;
+}

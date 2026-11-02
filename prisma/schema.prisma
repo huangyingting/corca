@@ -1,0 +1,501 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ============================================================================
+// NEXTAUTH & INVITE-ONLY ACCOUNT ADMISSION MODELS
+// ============================================================================
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @default(now()) @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordCredential {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  passwordHash      String
+  passwordChangedAt DateTime  @default(now())
+  resetTokenHash    String?   @unique
+  resetExpiresAt    DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([resetExpiresAt])
+}
+
+model AccountInvitation {
+  id              String    @id @default(cuid())
+  email           String
+  normalizedEmail String
+  activeForEmail  String?   @unique
+  tokenHash       String?   @unique
+  status          String    @default("PENDING") // "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED"
+  role            String    @default("Researcher") // "Admin" | "Researcher" | "Viewer"
+  planTier        String    @default("free") // "free" | "standard" | "pro"
+  reason          String?
+  invitedById     String?
+  acceptedById    String?
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
+
+  invitedBy  User?                @relation("AccountInvitationInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+  acceptedBy User?                @relation("AccountInvitationAcceptor", fields: [acceptedById], references: [id], onDelete: SetNull)
+  emails     AccountEmailOutbox[]
+
+  @@index([status, expiresAt])
+  @@index([normalizedEmail, createdAt])
+  @@index([invitedById])
+  @@index([acceptedById])
+}
+
+model InviteCodePass {
+  id           String    @id @default(cuid())
+  codeHash     String    @unique
+  codePrefix   String
+  rawCode      String?
+  name         String
+  role         String    @default("Researcher") // "Admin" | "Researcher" | "Viewer"
+  planTier     String    @default("standard") // "free" | "standard" | "pro"
+  durationDays Int       @default(30)
+  maxUses      Int       @default(1)
+  usedCount    Int       @default(0)
+  status       String    @default("ACTIVE") // "ACTIVE" | "CONSUMED" | "REVOKED" | "EXPIRED"
+  contractRef  String?
+  reason       String?
+  issuedById   String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+
+  issuedBy    User?                  @relation("InviteCodePassIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
+  redemptions InviteCodeRedemption[]
+
+  @@index([status, expiresAt])
+  @@index([issuedById])
+}
+
+model InviteCodeRedemption {
+  id           String    @id @default(cuid())
+  codePassId   String
+  userId       String
+  status       String    @default("ACTIVE") // "ACTIVE" | "REVOKED" | "EXPIRED"
+  redeemedAt   DateTime  @default(now())
+  accessEndsAt DateTime
+  revokedAt    DateTime?
+
+  codePass InviteCodePass @relation(fields: [codePassId], references: [id], onDelete: Cascade)
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([codePassId, userId])
+  @@index([userId])
+}
+
+model PersonalPass {
+  id                 String    @id @default(cuid())
+  recipientEmail     String
+  normalizedEmail    String
+  userId             String?
+  planTier           String    @default("standard") // "standard" | "pro"
+  durationDays       Int       @default(365)
+  status             String    @default("AWAITING_ACTIVATION") // "AWAITING_ACTIVATION" | "ACTIVE" | "EXPIRED" | "CANCELLED" | "REVOKED"
+  contractRef        String?
+  reason             String?
+  activationDeadline DateTime
+  activatedAt        DateTime?
+  endsAt             DateTime?
+  revokedAt          DateTime?
+  issuedById         String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
+
+  user     User? @relation("PersonalPassRecipient", fields: [userId], references: [id], onDelete: SetNull)
+  issuedBy User? @relation("PersonalPassIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
+
+  @@index([normalizedEmail])
+  @@index([status])
+}
+
+model Organization {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  adminEmail    String
+  contractRef   String
+  status        String   @default("ACTIVE") // "ACTIVE" | "SCHEDULED" | "EXPIRED" | "TERMINATED"
+  startsAt      DateTime
+  endsAt        DateTime
+  standardSeats Int      @default(10)
+  proSeats      Int      @default(5)
+  reason        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  members OrganizationMember[]
+}
+
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String?
+  email          String
+  role           String   @default("MEMBER") // "ADMIN" | "MEMBER"
+  seatPlan       String   @default("standard") // "standard" | "pro"
+  status         String   @default("ACTIVE") // "ACTIVE" | "FORMER"
+  joinedAt       DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, email])
+  @@index([userId])
+}
+
+model AccountEmailOutbox {
+  id            String    @id @default(cuid())
+  payload       String
+  status        String    @default("pending") // "pending" | "sending" | "sent" | "failed"
+  claimToken    String?
+  lastAttemptAt DateTime?
+  lastError     String?
+  sentAt        DateTime?
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  invitationId  String?
+
+  invitation AccountInvitation? @relation(fields: [invitationId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([invitationId])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorId      String?
+  actorEmail   String?
+  actorRole    String?
+  action       String
+  targetType   String
+  targetId     String?
+  targetLabel  String?
+  ipAddress    String?
+  userAgent    String?
+  reason       String?
+  metadataJson String   @default("{}")
+  createdAt    DateTime @default(now())
+
+  actor User? @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([actorId])
+  @@index([targetType, targetId])
+}
+
+// ============================================================================
+// USER & ACCOUNT SETTINGS MODELS
+// ============================================================================
+
+model User {
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  emailVerified          DateTime?
+  name                   String    @default("")
+  image                  String?
+  role                   String    @default("Researcher") // "Admin" | "Researcher" | "Viewer"
+  status                 String    @default("active") // "active" | "suspended" | "revoked" | "deleting"
+  planTier               String    @default("free") // "free" | "standard" | "pro"
+  operatorGrantPlan      String? // "free" | "standard" | "pro" | null
+  uiLanguage             String    @default("en")
+  dailyTokensUsed        Int       @default(0)
+  monthlyTokensUsed      Int       @default(0)
+  storageBytesUsed       Int       @default(0)
+  labsConfigJson         String    @default("{\"autoCompileOnIdle\":true,\"synctexHighlight\":true,\"academicPhrasebankSlash\":true,\"darkPdfPreview\":false}")
+  byokOpenAiKeyEncrypted String?
+  byokOpenAiKeyHint      String?
+  sessionVersion         Int       @default(1)
+  lastActiveAt           DateTime  @default(now())
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  accounts                   Account[]
+  sessions                   Session[]
+  passwordCredential         PasswordCredential?
+  accountInvitationsSent     AccountInvitation[]    @relation("AccountInvitationInviter")
+  accountInvitationsAccepted AccountInvitation[]    @relation("AccountInvitationAcceptor")
+  codePassesIssued           InviteCodePass[]       @relation("InviteCodePassIssuer")
+  codeRedemptions            InviteCodeRedemption[]
+  personalPassesReceived     PersonalPass[]         @relation("PersonalPassRecipient")
+  personalPassesIssued       PersonalPass[]         @relation("PersonalPassIssuer")
+  organizationMemberships    OrganizationMember[]
+  auditLogs                  AuditLog[]             @relation("AuditLogActor")
+  ownedProjects              Project[]              @relation("ProjectOwner")
+  projectCollaborations      ProjectCollaborator[]
+  projectVersions            ProjectVersion[]
+  projectComments            ProjectComment[]
+  libraryReferences          LibraryReference[]
+  libraryAnnotations         LibraryAnnotation[]
+  galleryPublications        GalleryPublication[]
+  feedbackEntries            UserFeedback[]
+}
+
+model UserFeedback {
+  id        String   @id @default(cuid())
+  userId    String?
+  category  String   @default("feedback") // "feedback" | "bug" | "problem"
+  message   String
+  pageUrl   String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// ============================================================================
+// PROJECTS, WORKSPACE FILES, VERSIONS, COMMENTS & SHARING MODELS
+// ============================================================================
+
+model Project {
+  id             String    @id @default(cuid())
+  name           String
+  description    String    @default("")
+  format         String    @default("latex") // "latex" | "typst" | "markdown" | "slides" | "docx"
+  templateId     String    @default("blank-article")
+  texliveVersion String    @default("tl2026-20260826-b6584b4")
+  latexEngine    String    @default("auto") // "auto" | "pdflatex" | "xelatex" | "lualatex"
+  mainFilePath   String    @default("main.tex")
+  ownerId        String
+  isPinned       Boolean   @default(false)
+  visibility     String    @default("private") // "private" | "shared" | "public"
+  gitRepoUrl     String?
+  gitBranch      String    @default("main")
+  gitLastSyncAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  owner               User                  @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  files               ProjectFile[]
+  versions            ProjectVersion[]
+  comments            ProjectComment[]
+  collaborators       ProjectCollaborator[]
+  shareLinks          ProjectShareLink[]
+  galleryPublications GalleryPublication[]
+
+  @@index([ownerId, updatedAt])
+}
+
+model ProjectFile {
+  id         String   @id @default(cuid())
+  projectId  String
+  path       String
+  name       String
+  folderPath String   @default("")
+  kind       String   @default("tex") // "tex" | "typ" | "md" | "slides" | "bib" | "cls" | "sty" | "docx" | "asset"
+  content    String   @default("")
+  sizeBytes  Int      @default(0)
+  isMain     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, path])
+  @@index([projectId])
+}
+
+model ProjectVersion {
+  id           String   @id @default(cuid())
+  projectId    String
+  label        String
+  summary      String   @default("")
+  snapshotJson String
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+}
+
+model ProjectComment {
+  id         String   @id @default(cuid())
+  projectId  String
+  filePath   String
+  lineNumber Int?
+  anchorText String?
+  content    String
+  status     String   @default("open") // "open" | "resolved"
+  parentId   String?
+  authorId   String?
+  authorName String   @default("Researcher")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, filePath])
+}
+
+model ProjectCollaborator {
+  id          String   @id @default(cuid())
+  projectId   String
+  userId      String?
+  email       String
+  permission  String   @default("VIEWER") // "VIEWER" | "COMMENTER" | "EDITOR"
+  scopeType   String   @default("PROJECT") // "PROJECT" | "FOLDER" | "FILE"
+  scopePath   String   @default("/")
+  status      String   @default("ACTIVE") // "ACTIVE" | "REVOKED"
+  invitedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, email, scopeType, scopePath])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model ProjectShareLink {
+  id           String    @id @default(cuid())
+  projectId    String
+  tokenHash    String    @unique
+  rawToken     String
+  permission   String    @default("VIEWER") // "VIEWER" | "COMMENTER" | "EDITOR"
+  scopeType    String    @default("PROJECT") // "PROJECT" | "FOLDER" | "FILE"
+  scopePath    String    @default("/")
+  expiresAt    DateTime?
+  revokedAt    DateTime?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model GalleryPublication {
+  id             String   @id @default(cuid())
+  projectId      String?
+  authorId       String?
+  authorName     String
+  title          String
+  summary        String
+  category       String   @default("Papers") // "Papers" | "Notes" | "Slides" | "Templates"
+  format         String   @default("latex") // "latex" | "typst" | "markdown" | "slides"
+  tagsJson       String   @default("[]")
+  contentPreview String
+  snapshotJson   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  author  User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([category, createdAt])
+}
+
+// ============================================================================
+// RESEARCH LIBRARY & READER ANNOTATIONS MODELS
+// ============================================================================
+
+model LibraryReference {
+  id             String   @id @default(cuid())
+  userId         String
+  title          String
+  citeKey        String
+  authorsJson    String   @default("[]")
+  year           Int?
+  venue          String?
+  doi            String?
+  arxivId        String?
+  openAlexId     String?
+  url            String?
+  abstract       String?
+  note           String?
+  tagsJson       String   @default("[]")
+  bibtex         String
+  pdfFileName    String?
+  pdfStoragePath String?
+  pdfSizeBytes   Int      @default(0)
+  pdfTextContent String?
+  citationCount  Int      @default(0)
+  referenceCount Int      @default(0)
+  inTrash        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  annotations LibraryAnnotation[]
+
+  @@index([userId, inTrash, createdAt])
+}
+
+model LibraryAnnotation {
+  id           String   @id @default(cuid())
+  referenceId  String
+  userId       String
+  kind         String   @default("highlight") // "highlight" | "sticky"
+  pageNumber   Int      @default(1)
+  selectedText String?
+  comment      String?
+  color        String   @default("yellow") // "yellow" | "green" | "blue" | "pink"
+  rectJson     String   @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reference LibraryReference @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([referenceId, pageNumber])
+}
